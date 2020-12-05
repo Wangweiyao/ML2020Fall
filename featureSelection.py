@@ -3,15 +3,25 @@ import random
 import torch
 import torch.nn.functional as Func
 import copy
+from sklearn.ensemble import GradientBoostingClassifier
 # return the indices of selected features
 def featureSelection(Mbar, X, y, D=3, r=[0.8, 0.7, 0.6]):
     # previous ensemble model: Mbar
     # training data: (X, y)  X=(N,F), y is an ndarray(N,1)
     # number of bins: D
     # sample ratio for each bin: r
-    y = torch.tensor(y, dtype=torch.long).squeeze()
+    with torch.no_grad():
+        y = torch.tensor(y, dtype=torch.long).squeeze()
     N,F = X.shape
-    y_predict = torch.tensor(Mbar.predict_log_proba(X)) # model class' structure is assume to be of the same form as our homework
+    if isinstance(Mbar, GradientBoostingClassifier):
+        with torch.no_grad():
+            y_predict = torch.tensor(Mbar.predict_log_proba(X)) # model class' structure is assume to be of the same form as our homework
+    else:
+        assert isinstance(Mbar, torch.nn.Module)
+        with torch.no_grad():
+            X_pred = torch.from_numpy(X)
+            y_predict = Func.log_softmax(Mbar(X_pred), dim = 1)
+
     L = (Func.nll_loss(y_predict, y, weight=None, reduction='none').unsqueeze(1)).numpy() # assume there is a loss function, L=(N,1) ndarray
     g = np.zeros(F)
     # loop through each feature
@@ -19,14 +29,21 @@ def featureSelection(Mbar, X, y, D=3, r=[0.8, 0.7, 0.6]):
         Xf = copy.deepcopy(X)
         # shuffle the value of the f-th column in X
         np.random.shuffle(Xf[:,f])
-        y_predict = torch.tensor(Mbar.predict_log_proba(Xf))
+        if isinstance(Mbar, GradientBoostingClassifier):
+            with torch.no_grad():
+                y_predict = torch.tensor(Mbar.predict_log_proba(Xf))
+        else:
+            assert isinstance(Mbar, torch.nn.Module)
+            with torch.no_grad():
+                X_pred = torch.from_numpy(Xf)
+                y_predict = Func.log_softmax(Mbar(X_pred), dim = 1)
         Lf = (Func.nll_loss(y_predict, y, weight=None, reduction='none').unsqueeze(1)).numpy()
         g[f] = np.std(np.subtract(Lf, L), axis = 0)
     if np.linalg.norm(x=g) < 1E-10:
         return [i for i in range(F)]
     sorted_idx = np.argsort(g)[::-1]
-    print(g)
-    print(sorted_idx)
+    #print(g)
+    #print(sorted_idx)
     bin_size = round(F/D)
     feature = []
     for d in range(D-1):

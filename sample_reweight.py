@@ -76,11 +76,17 @@ class SampleReweight:
         return idx_to_bin, bins
 
     def cal_sample_loss(self, model) -> np.array:
-        assert isinstance(model, GradientBoostingClassifier)
-        with torch.no_grad():
-            predictions = torch.tensor(model.predict_log_proba(self.X))
-            # print(predictions.size(), self.y.size())
-            loss = self.criterion(predictions, self.y).unsqueeze(1)
+        if isinstance(model, GradientBoostingClassifier):
+            with torch.no_grad():
+                predictions = torch.tensor(model.predict_log_proba(self.X))
+                # print(predictions.size(), self.y.size())
+        else:
+            assert isinstance(model, torch.nn.Module)
+            with torch.no_grad():
+                X_pred = torch.from_numpy(self.X)
+                predictions = F.log_softmax(model(X_pred), dim = 1)
+                
+        loss = self.criterion(predictions, self.y).unsqueeze(1)
         return loss.numpy()
 
     def reweight(self, model, staged_pred: List[np.array]) -> np.array:
