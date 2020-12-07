@@ -58,7 +58,7 @@ import multiprocessing as mp
 pool = mp.Pool(int(mp.cpu_count()/2))
 
 # Step 2: `pool.apply` the `howmany_within_range()`
-symbols = ['BTC_USD','ETH_USD','LTC_USD','BTH_USD','EOS_USD','XRP_USD']
+symbols = ['BTC_USD'] #,'ETH_USD','LTC_USD','BTH_USD','EOS_USD','XRP_USD']
 results = [pool.apply(save_historical_data, args=(symbol, platform, time_periods, time_granualarity)) for symbol in symbols]
 
 # Step 3: Don't forget to close
