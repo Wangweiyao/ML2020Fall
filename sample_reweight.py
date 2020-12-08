@@ -33,7 +33,7 @@ class SampleReweight:
         self.k = 1
 
         self.range_to_bin = [(i * (self.sample_size // self.b),
-                              (i + 1) * (self.sample_size // self.b)) for i in range(self.b)]
+                              (i + 1 + int(i == self.b - 1)) * (self.sample_size // self.b)) for i in range(self.b)]
 
     def _get_weight(self, l: np.array) -> np.array:
         head = math.ceil(self.C.shape[1] * 0.1)
